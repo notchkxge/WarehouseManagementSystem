@@ -19,7 +19,8 @@ public abstract class Document{
     public virtual Employee Author{ get; set; }
     public virtual DocumentStatus DocumentStatus{ get; set; }
     public virtual DocumentType DocumentType  { get; set; }
-    
-    
-    
+
+    public virtual ICollection<DocumentLine> DocumentLines{ get; set; } = new List<DocumentLine>();
+
+
 }

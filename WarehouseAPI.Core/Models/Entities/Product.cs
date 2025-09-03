@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using WarehouseAPI.Core.Models.Docs;
 
 namespace WarehouseAPI.Core.Models.Entities;
 
@@ -19,4 +20,6 @@ public class Product{
     public double Dimension{ get; set; }
     [Required]
     public int Quantity{ get; set; }
+
+    public virtual ICollection<DocumentLine> DocumentLines{ get; set; } = new List<DocumentLine>();
 }
