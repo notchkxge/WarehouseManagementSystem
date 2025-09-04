@@ -16,7 +16,6 @@ public class StorageLocation{
     [Required]
     [MaxLength(100)]
     public string Spot { get; set; }  
-        
     public double CurrentWeight { get; set; }
     public const double SpotVolume = 1.0;
     public int WarehouseId{ get; set; }
