@@ -12,6 +12,7 @@ public class ApplicationDbContext : DbContext{
     public DbSet<Role> Roles{ get; set; } = null!;
     public DbSet<StorageLocation> Locations{ get; set; } = null!;
     public DbSet<Product> Products{ get; set; } = null!;
+    public DbSet<ProductBalance> ProductBalances { get; set; } = null!;
 
     
 //Documents
@@ -86,7 +87,7 @@ public class ApplicationDbContext : DbContext{
                 entity.HasKey(w => w.Id);
                 entity.Property(w => w.Name).IsRequired().HasMaxLength(100);
                 entity.HasIndex(w => w.Name);
-                entity.Property(w => w.Capacity).IsRequired();
+                entity.Property(w => w.Address).IsRequired();
 
                 entity.HasMany(w => w.StorageLocations)
                     .WithOne(s => s.Warehouse)
@@ -141,6 +142,20 @@ public class ApplicationDbContext : DbContext{
 
                 entity.HasMany(d => d.Documents)
                     .WithOne(d => d.DocumentType)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+            //add ProductBalance
+            modelBuilder.Entity<ProductBalance>(entity => {
+                entity.HasKey(pb => pb.Id);
+    
+                entity.HasOne(pb => pb.Product)
+                    .WithMany(p => p.ProductBalances)
+                    .HasForeignKey(pb => pb.ProductId)
+                    .OnDelete(DeleteBehavior.Restrict);
+        
+                entity.HasOne(pb => pb.StorageLocation)
+                    .WithMany(sl => sl.ProductBalances)
+                    .HasForeignKey(pb => pb.StorageLocationId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
     }

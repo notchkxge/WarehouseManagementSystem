@@ -22,4 +22,5 @@ public class Product{
     public int Quantity{ get; set; }
 
     public virtual ICollection<DocumentLine> DocumentLines{ get; set; } = new List<DocumentLine>();
-}
+    public virtual ICollection<ProductBalance> ProductBalances{ get; set; } = new List<ProductBalance>();
+}  
