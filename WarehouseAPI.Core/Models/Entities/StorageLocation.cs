@@ -16,11 +16,13 @@ public class StorageLocation{
     [Required]
     [MaxLength(100)]
     public string Spot { get; set; }  
-        
     public double CurrentWeight { get; set; }
     public const double SpotVolume = 1.0;
     public int WarehouseId{ get; set; }
+    public int Capacity{ get; set; }
     public virtual Warehouse Warehouse { get; set; }
+    public virtual ICollection<ProductBalance> ProductBalances{ get; set; } = new List<ProductBalance>();
+    
     public bool CanAddWeight(double additionalWeight)
     {
         var rackSpots = Warehouse.StorageLocations
