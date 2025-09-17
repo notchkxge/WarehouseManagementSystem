@@ -18,7 +18,7 @@ public class ApplicationDbContext : DbContext{
 //Documents
     public DbSet<Document> Documents{ get; set; } = null!;
     public DbSet<DocumentStatus> DocumentStatuses{ get; set; } = null!;
-    public DbSet<DocumentType> DocumentsTypes{ get; set; } = null!;
+    public DbSet<DocumentType> DocumentTypes{ get; set; } = null!;
     public DbSet<DocumentLine> DocumentLines{ get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder){
