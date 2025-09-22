@@ -1,50 +1,82 @@
-﻿namespace WarehouseAPI.Core.Data.Repositories;
+﻿using Microsoft.EntityFrameworkCore;
+using WarehouseAPI.Core.Models.Docs;
+using WarehouseAPI.Core.Models.Entities;
 
-public class DocumentRepository{
-    private readonly ApplicationDbContext _context;
-
-    public DocumentRepository(ApplicationDbContext context){
-        _context = context;
-    }
-
-    public List<ProductFrequencyInfo> GetFrequentlyMovedProducts()
+namespace WarehouseAPI.Core.Data.Repositories
+{
+    public class DocumentRepository
     {
-        return _context.DocumentLines
-            .Join(_context.Documents,
-                line => line.DocumentId,
-                doc => doc.Id,
-                (line, doc) => new { line, doc })
-            .Join(_context.DocumentTypes,
-                combined => combined.doc.DocumentTypeId,
-                type => type.Id,
-                (combined, type) => new { combined.doc, combined.line, type })
-            .Where(combined => combined.type.Name == "GoodsReceipt" || combined.type.Name == "GoodsIssue")
-            .Join(_context.Products,
-                temp => temp.line.ProductId,
-                product => product.Id,
-                (temp, product) => new { 
-                    ProductId = product.Id,
-                    ProductName = product.Name,
-                    ArticleNumber = product.ArticleNumber,
-                })
-            // Group by product to count frequency
-            .GroupBy(x => new { x.ProductId, x.ProductName, x.ArticleNumber })
-            .Select(g => new ProductFrequencyInfo
-            {
-                ProductId = g.Key.ProductId,
-                ProductName = g.Key.ProductName,
-                ArticleNumber = g.Key.ArticleNumber,
-                FrequencyCount = g.Count() // Count how many times this product appears
-            })
-            .OrderByDescending(x => x.FrequencyCount) // Order by frequency
-            .ToList();
-    }
+        private readonly ApplicationDbContext _context;
 
-    public class ProductFrequencyInfo
-    {
-        public int ProductId { get; set; }
-        public string ProductName { get; set; }
-        public string ArticleNumber { get; set; }
-        public int FrequencyCount { get; set; } 
+        public DocumentRepository(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<List<Document>> GetAllAsync()
+        {
+            return await _context.Documents
+                .Include(d => d.Author)
+                .Include(d => d.DocumentStatus)
+                .Include(d => d.DocumentType)
+                .Include(d => d.DocumentLines)
+                .ToListAsync();
+        }
+
+        public async Task<Document> GetByIdAsync(int id)
+        {
+            return await _context.Documents
+                .Include(d => d.Author)
+                .Include(d => d.DocumentStatus)
+                .Include(d => d.DocumentType)
+                .Include(d => d.DocumentLines)
+                .ThenInclude(dl => dl.Product)
+                .FirstOrDefaultAsync(d => d.Id == id);
+        }
+
+        public async Task<List<Document>> GetByTypeIdAsync(int typeId)
+        {
+            return await _context.Documents
+                .Where(d => d.DocumentTypeId == typeId)
+                .ToListAsync();
+        }
+
+        public async Task<List<Document>> GetByStatusIdAsync(int statusId)
+        {
+            return await _context.Documents
+                .Where(d => d.DocumentStatusId == statusId)
+                .ToListAsync();
+        }
+
+        public async Task<List<Document>> GetByAuthorIdAsync(int authorId)
+        {
+            return await _context.Documents
+                .Where(d => d.AuthorId == authorId)
+                .ToListAsync();
+        }
+
+        public async Task<Document> CreateAsync(Document document)
+        {
+            _context.Documents.Add(document);
+            await _context.SaveChangesAsync();
+            return document;
+        }
+
+        public async Task<Document> UpdateAsync(Document document)
+        {
+            _context.Documents.Update(document);
+            await _context.SaveChangesAsync();
+            return document;
+        }
+
+        public async Task<bool> DeleteAsync(int id)
+        {
+            var document = await _context.Documents.FindAsync(id);
+            if (document == null) return false;
+            
+            _context.Documents.Remove(document);
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }
