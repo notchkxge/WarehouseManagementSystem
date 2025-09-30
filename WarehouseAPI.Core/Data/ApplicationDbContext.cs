@@ -23,8 +23,8 @@ public class ApplicationDbContext : DbContext{
     public DbSet<DocumentStatus> DocumentStatuses{ get; set; } = null!;
     public DbSet<DocumentType> DocumentTypes{ get; set; } = null!;
     public DbSet<DocumentLine> DocumentLines{ get; set; } = null!;
-    //public DbSet<GoodsReceipt> GoodsReceipts { get; set; } = null!;
-    //public DbSet<GoodsIssue> GoodsIssues { get; set; } = null!;
+    public DbSet<GoodsReceipt> GoodsReceipts { get; set; } = null!;
+    public DbSet<GoodsIssue> GoodsIssues { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder){
         //Отношения между документами
@@ -53,7 +53,7 @@ public class ApplicationDbContext : DbContext{
         });
         // Configure inheritance for document types
             modelBuilder.Entity<Document>()
-                .HasDiscriminator<string>("DocumentType")
+                .HasDiscriminator<string>("DocType")
                 .HasValue<GoodsReceipt>("GoodsReceipt")
                 .HasValue<GoodsIssue>("GoodsIssue");
 
@@ -62,6 +62,12 @@ public class ApplicationDbContext : DbContext{
                 entity.HasIndex(e => e.Login).IsUnique();
             });
 
+            modelBuilder.Entity<DocumentLine>()
+                .HasDiscriminator<string>("LineType")
+                .HasValue<GoodsReceiptLine>("GoodsReceipt")
+                .HasValue<GoodsIssueLine>("GoodsIssue");
+
+            // Your existing DocumentLine configuration remains the same
             modelBuilder.Entity<DocumentLine>(entity => {
                 entity.HasKey(d => d.Id);
                 entity.Property(d => d.Quantity).IsRequired();
