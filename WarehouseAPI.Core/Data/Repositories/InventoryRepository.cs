@@ -3,11 +3,11 @@ using WarehouseAPI.Core.Models.Entities;
 
 namespace WarehouseAPI.Core.Data.Repositories
 {
-    public class ProductBalanceRepository
+    public class InventoryRepository
     {
         private readonly ApplicationDbContext _context;
 
-        public ProductBalanceRepository(ApplicationDbContext context)
+        public InventoryRepository(ApplicationDbContext context)
         {
             _context = context;
         }
@@ -17,6 +17,7 @@ namespace WarehouseAPI.Core.Data.Repositories
             return await _context.ProductBalances
                 .Include(pb => pb.Product)
                 .Include(pb => pb.StorageLocation)
+                .ThenInclude(sl => sl.Warehouse)
                 .ToListAsync();
         }
 
@@ -25,27 +26,30 @@ namespace WarehouseAPI.Core.Data.Repositories
             return await _context.ProductBalances
                 .Include(pb => pb.Product)
                 .Include(pb => pb.StorageLocation)
+                .ThenInclude(sl => sl.Warehouse)
                 .FirstOrDefaultAsync(pb => pb.Id == id);
         }
 
-        public async Task<List<ProductBalance>> GetByProductIdAsync(int productId)
+        public async Task<List<ProductBalance>> GetLowStockAsync(decimal threshold = 10)
         {
             return await _context.ProductBalances
-                .Where(pb => pb.ProductId == productId)
+                .Include(pb => pb.Product)
                 .Include(pb => pb.StorageLocation)
+                .ThenInclude(sl => sl.Warehouse)
+                .Where(pb => pb.Quantity <= threshold)
                 .ToListAsync();
         }
 
-        public async Task<List<ProductBalance>> GetByLocationIdAsync(int locationId)
+        // ADD THIS MISSING METHOD:
+        public async Task<ProductBalance> GetByProductAndLocationAsync(int productId, int storageLocationId)
         {
             return await _context.ProductBalances
-                .Where(pb => pb.StorageLocationId == locationId)
-                .Include(pb => pb.Product)
-                .ToListAsync();
+                .FirstOrDefaultAsync(pb => pb.ProductId == productId && pb.StorageLocationId == storageLocationId);
         }
 
         public async Task<ProductBalance> CreateAsync(ProductBalance productBalance)
         {
+            productBalance.UpdateDate = DateTime.UtcNow;
             _context.ProductBalances.Add(productBalance);
             await _context.SaveChangesAsync();
             return productBalance;
@@ -53,6 +57,7 @@ namespace WarehouseAPI.Core.Data.Repositories
 
         public async Task<ProductBalance> UpdateAsync(ProductBalance productBalance)
         {
+            productBalance.UpdateDate = DateTime.UtcNow;
             _context.ProductBalances.Update(productBalance);
             await _context.SaveChangesAsync();
             return productBalance;
@@ -64,21 +69,6 @@ namespace WarehouseAPI.Core.Data.Repositories
             if (productBalance == null) return false;
             
             _context.ProductBalances.Remove(productBalance);
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<bool> AdjustQuantityAsync(int productId, int locationId, int quantityChange)
-        {
-            var productBalance = await _context.ProductBalances
-                .FirstOrDefaultAsync(pb => pb.ProductId == productId && pb.StorageLocationId == locationId);
-            
-            if (productBalance == null) return false;
-            
-            productBalance.Quantity += quantityChange;
-            if (productBalance.Quantity < 0) productBalance.Quantity = 0;
-            
-            _context.ProductBalances.Update(productBalance);
             await _context.SaveChangesAsync();
             return true;
         }
