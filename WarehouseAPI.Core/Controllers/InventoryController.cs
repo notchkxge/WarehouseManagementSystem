@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Text;
+using Microsoft.AspNetCore.Mvc;
 using WarehouseAPI.Core.Data.Repositories;
 using WarehouseAPI.Core.Models.DTOs;
 using WarehouseAPI.Core.Models.Entities;
@@ -96,6 +97,87 @@ namespace WarehouseAPI.Core.Controllers
             var result = await _inventoryRepository.DeleteAsync(id);
             if (!result) return NotFound();
             return NoContent();
+        }
+        [HttpGet("report/csv")]
+        public async Task<IActionResult> GetInventoryReportCsv()
+        {
+            var inventory = await _inventoryRepository.GetAllAsync();
+    
+            // Russian headers
+            var csv = new StringBuilder();
+            csv.AppendLine("Наименование товара,Артикул,Цена,Вес,Склад,Место хранения,Количество,Последнее обновление");
+    
+            foreach (var item in inventory)
+            {
+                var location = $"{item.StorageLocation.Building}-{item.StorageLocation.Room}-{item.StorageLocation.Rack}-{item.StorageLocation.Spot}";
+                csv.AppendLine($"\"{item.Product.Name}\",\"{item.Product.ArticleNumber}\",{item.Product.Price},{item.Product.Weight},\"{item.StorageLocation.Warehouse.Name}\",\"{location}\",{item.Quantity},\"{item.UpdateDate:yyyy-MM-dd HH:mm}\"");
+            }
+    
+            // Save to folder
+            var reportsPath = Path.Combine(Directory.GetCurrentDirectory(), "Reports", "Generated");
+            if (!Directory.Exists(reportsPath))
+            {
+                Directory.CreateDirectory(reportsPath);
+            }
+    
+            var fileName = $"Отчет_по_остаткам_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+            var filePath = Path.Combine(reportsPath, fileName);
+            await System.IO.File.WriteAllTextAsync(filePath, csv.ToString(), Encoding.UTF8);
+    
+            var bytes = Encoding.UTF8.GetBytes(csv.ToString());
+            return File(bytes, "text/csv", fileName);
+        }
+        [HttpGet("reports/list")]
+        public IActionResult GetSavedReports()
+        {
+            var reportsPath = Path.Combine(Directory.GetCurrentDirectory(), "Reports", "Generated");
+    
+            if (!Directory.Exists(reportsPath))
+            {
+                return Ok(new { message = "No reports generated yet" });
+            }
+    
+            var files = Directory.GetFiles(reportsPath, "*.csv")
+                .Select(f => new
+                {
+                    FileName = Path.GetFileName(f),
+                    FilePath = f,
+                    CreatedDate = System.IO.File.GetCreationTime(f),
+                    Size = new FileInfo(f).Length
+                })
+                .OrderByDescending(f => f.CreatedDate)
+                .ToList();
+    
+            return Ok(files);
+        }
+        [HttpGet("report/status/csv")]
+        public async Task<IActionResult> GetInventoryStatusReportCsv()
+        {
+            var inventory = await _inventoryRepository.GetAllAsync();
+    
+            // Russian headers
+            var csv = new StringBuilder();
+            csv.AppendLine("Товар,Артикул,Цена,Место хранения,Количество,Статус запаса,Последнее обновление");
+    
+            foreach (var item in inventory)
+            {
+                var location = $"{item.StorageLocation.Building}-{item.StorageLocation.Room}-{item.StorageLocation.Rack}-{item.StorageLocation.Spot}";
+                var stockStatus = item.Quantity == 0 ? "НЕТ В НАЛИЧИИ" : 
+                    item.Quantity <= 10 ? "НИЗКИЙ ЗАПАС" : "В НАЛИЧИИ";
+        
+                csv.AppendLine($"\"{item.Product.Name}\",\"{item.Product.ArticleNumber}\",{item.Product.Price},\"{location}\",{item.Quantity},\"{stockStatus}\",\"{item.UpdateDate:yyyy-MM-dd HH:mm}\"");
+            }
+    
+            // Save to folder
+            var reportsPath = Path.Combine(Directory.GetCurrentDirectory(), "Reports", "Generated");
+            if (!Directory.Exists(reportsPath)) Directory.CreateDirectory(reportsPath);
+    
+            var fileName = $"Статус_запасов_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+            var filePath = Path.Combine(reportsPath, fileName);
+            await System.IO.File.WriteAllTextAsync(filePath, csv.ToString(), Encoding.UTF8);
+    
+            var bytes = Encoding.UTF8.GetBytes(csv.ToString());
+            return File(bytes, "text/csv", fileName);
         }
     }
 }
