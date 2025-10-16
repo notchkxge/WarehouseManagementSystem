@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Text;
+using Microsoft.AspNetCore.Mvc;
 using WarehouseAPI.Core.Data.Repositories;
 using WarehouseAPI.Core.Models.DTOs;
 using WarehouseAPI.Core.Models.Entities;
@@ -81,6 +82,44 @@ namespace WarehouseAPI.Core.Controllers
             var result = await _storageLocationRepository.DeleteAsync(id);
             if (!result) return NotFound();
             return NoContent();
+        }
+        [HttpGet("report/capacity/csv")]
+        public async Task<IActionResult> GetStorageCapacityReportCsv()
+        {
+            var locations = await _storageLocationRepository.GetAllAsync();
+
+            // Russian headers
+            var csv = new StringBuilder();
+            csv.AppendLine("Склад,Место хранения,Текущий вес,Максимальная нагрузка,Использование %,Товары,Статус загрузки");
+
+            foreach (var location in locations)
+            {
+                var fullLocation = $"{location.Building}-{location.Room}-{location.Rack}-{location.Spot}";
+                var utilization = location.CurrentWeight / 300.0 * 100; // 300kg per rack
+        
+                // NULL-SAFE: Handle null ProductBalances and null Products
+                var products = location.ProductBalances?
+                    .Where(pb => pb != null) // Filter out null ProductBalance objects
+                    .Select(pb => $"{pb.Product?.Name ?? "Unknown Product"} ({pb.Quantity})") ?? Enumerable.Empty<string>();
+        
+                var productsString = string.Join("; ", products);
+                var loadStatus = utilization >= 90 ? "ПЕРЕГРУЗКА" : 
+                    utilization >= 70 ? "ВЫСОКАЯ" : 
+                    "НОРМА";
+
+                csv.AppendLine($"\"{location.Warehouse?.Name ?? "Unknown Warehouse"}\",\"{fullLocation}\",{location.CurrentWeight},300,{utilization:F1}%,\"{productsString}\",\"{loadStatus}\"");
+            }
+
+            // Save to folder
+            var reportsPath = Path.Combine(Directory.GetCurrentDirectory(), "Reports", "Generated");
+            if (!Directory.Exists(reportsPath)) Directory.CreateDirectory(reportsPath);
+
+            var fileName = $"Загрузка_склада_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+            var filePath = Path.Combine(reportsPath, fileName);
+            await System.IO.File.WriteAllTextAsync(filePath, csv.ToString(), Encoding.UTF8);
+
+            var bytes = Encoding.UTF8.GetBytes(csv.ToString());
+            return File(bytes, "text/csv", fileName);
         }
     }
 }

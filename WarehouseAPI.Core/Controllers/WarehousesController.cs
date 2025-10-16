@@ -146,7 +146,6 @@ namespace WarehouseAPI.Core.Controllers
             {
                 return NotFound();
             }
-
             return NoContent();
         }
     }
