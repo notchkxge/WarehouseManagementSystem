@@ -8,6 +8,7 @@ using WarehouseAPI.Core.Models.Entities;
 namespace WarehouseAPI.Core.Controllers{
     [ApiController]
     [Route("api/[controller]")]
+    [SimpleAuthorize("Storekeeper")]
     public class GoodsReceiptController : ControllerBase{
         private readonly ApplicationDbContext _context;
 
@@ -17,7 +18,7 @@ namespace WarehouseAPI.Core.Controllers{
 
         // POST: api/goodsreceipt - Create new receipt in "новый" status
         [HttpPost]
-        public async Task<ActionResult<GoodsReceipt>> CreateGoodsReceipt(CreateGoodsReceiptDto dto){
+        public async Task<ActionResult<GoodsReceiptIssue>> CreateGoodsReceipt(CreateGoodsReceiptDto dto){
             // Get status "новый"
             var newStatus = await _context.DocumentStatuses.FirstOrDefaultAsync(s => s.Name == "новый");
             var receiptType = await _context.DocumentTypes.FirstOrDefaultAsync(t => t.Name == "GoodsReceipt");
@@ -25,7 +26,7 @@ namespace WarehouseAPI.Core.Controllers{
             if (newStatus == null || receiptType == null)
                 return BadRequest("Required document status or type not found");
 
-            var receipt = new GoodsReceipt{
+            var receipt = new GoodsReceiptIssue{
                 Number = await GenerateDocumentNumber(),
                 CreatedDate = DateTime.UtcNow,
                 AuthorId = dto.AuthorId,
@@ -109,49 +110,73 @@ namespace WarehouseAPI.Core.Controllers{
 
         // PUT: api/goodsreceipt/{id}/close - Move to "закрыт", update inventory
         [HttpPut("{id}/close")]
-        public async Task<ActionResult> CloseGoodsReceipt(int id){
-            var receipt = await _context.GoodsReceipts
-                .Include(r => r.DocumentLines)
-                .ThenInclude(dl => dl.Product)
-                .FirstOrDefaultAsync(r => r.Id == id);
+public async Task<ActionResult> CloseGoodsReceipt(int id)
+{
+    var receipt = await _context.GoodsReceipts
+        .Include(r => r.DocumentLines)
+        .ThenInclude(dl => dl.Product)
+        .FirstOrDefaultAsync(r => r.Id == id);
 
-            if (receipt == null) return NotFound();
+    if (receipt == null) return NotFound();
 
-            // Get status "закрыт"
-            var closeStatus = await _context.DocumentStatuses.FirstOrDefaultAsync(s => s.Name == "закрыт");
-            if (closeStatus == null) return BadRequest("Status not found");
+    // Get status "закрыт"
+    var closeStatus = await _context.DocumentStatuses.FirstOrDefaultAsync(s => s.Name == "закрыт");
+    if (closeStatus == null) return BadRequest("Status not found");
 
-            // Update inventory (ProductBalance)
-            foreach (var line in receipt.DocumentLines){
-                // Find or create product balance
+    // Update inventory AND storage location weights
+    foreach (var line in receipt.DocumentLines)
+    {
+        // Find the assignment for this line
+        var assignment = await _context.GoodsReceiptLineAssignments
+            .FirstOrDefaultAsync(a => a.DocumentLineId == line.Id);
+        
+        if (assignment != null)
+        {
+            var storageLocation = await _context.Locations
+                .FirstOrDefaultAsync(sl => sl.Id == assignment.StorageLocationId);
+            
+            if (storageLocation != null)
+            {
+                // CALCULATE AND UPDATE WEIGHT - FIXED
+                double productWeight = (double)line.Product.Weight;
+                double additionalWeight = productWeight * (double)line.Quantity;
+                storageLocation.CurrentWeight += additionalWeight;
+
+                // Update or create product balance
                 var productBalance = await _context.ProductBalances
-                    .FirstOrDefaultAsync(pb => pb.ProductId == line.ProductId);
+                    .FirstOrDefaultAsync(pb => pb.ProductId == line.ProductId && 
+                                              pb.StorageLocationId == storageLocation.Id);
 
-                if (productBalance != null){
+                if (productBalance != null)
+                {
                     productBalance.Quantity += line.Quantity;
                     productBalance.UpdateDate = DateTime.UtcNow;
                 }
-                else{
-                    productBalance = new ProductBalance{
+                else
+                {
+                    productBalance = new ProductBalance
+                    {
                         ProductId = line.ProductId,
-                        StorageLocationId = 14, // Default location
+                        StorageLocationId = storageLocation.Id,
                         Quantity = line.Quantity,
                         UpdateDate = DateTime.UtcNow
                     };
                     _context.ProductBalances.Add(productBalance);
                 }
             }
-
-            // Update document status
-            receipt.DocumentStatusId = closeStatus.Id;
-            await _context.SaveChangesAsync();
-
-            return Ok();
         }
+    }
+
+    // Update document status
+    receipt.DocumentStatusId = closeStatus.Id;
+    await _context.SaveChangesAsync();
+
+    return Ok();
+}
 
         // GET: api/goodsreceipt/{id} - Get receipt details
         [HttpGet("{id}")]
-        public async Task<ActionResult<GoodsReceipt>> GetGoodsReceipt(int id){
+        public async Task<ActionResult<GoodsReceiptIssue>> GetGoodsReceipt(int id){
             var receipt = await _context.GoodsReceipts
                 .Include(r => r.Author)
                 .Include(r => r.DocumentStatus)
@@ -166,7 +191,7 @@ namespace WarehouseAPI.Core.Controllers{
 
         // GET: api/goodsreceipt - Get all receipts
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<GoodsReceipt>>> GetGoodsReceipts(){
+        public async Task<ActionResult<IEnumerable<GoodsReceiptIssue>>> GetGoodsReceipts(){
             var receipts = await _context.GoodsReceipts
                 .Include(r => r.Author)
                 .Include(r => r.DocumentStatus)

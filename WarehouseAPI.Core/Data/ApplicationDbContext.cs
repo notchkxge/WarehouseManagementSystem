@@ -23,8 +23,14 @@ public class ApplicationDbContext : DbContext{
     public DbSet<DocumentStatus> DocumentStatuses{ get; set; } = null!;
     public DbSet<DocumentType> DocumentTypes{ get; set; } = null!;
     public DbSet<DocumentLine> DocumentLines{ get; set; } = null!;
-    public DbSet<GoodsReceipt> GoodsReceipts { get; set; } = null!;
+    public DbSet<GoodsReceiptIssue> GoodsReceipts { get; set; } = null!;
     public DbSet<GoodsIssue> GoodsIssues { get; set; } = null!;
+    public DbSet<InventoryDocument> InventoryDocuments { get; set; }
+    public DbSet<InventoryDocumentLine> InventoryDocumentLines { get; set; }
+    public DbSet<StorageReportDocument> StorageReportDocuments { get; set; }
+    public DbSet<StorageReportDocumentLine> StorageReportDocumentLines { get; set; }
+    public DbSet<GoodsReceiptLineAssignment> GoodsReceiptLineAssignments{ get; set; }
+    
 
     protected override void OnModelCreating(ModelBuilder modelBuilder){
         //Отношения между документами
@@ -52,10 +58,12 @@ public class ApplicationDbContext : DbContext{
                 .HasForeignKey(d => d.DocumentTypeId);
         });
         // Configure inheritance for document types
-            modelBuilder.Entity<Document>()
-                .HasDiscriminator<string>("DocType")
-                .HasValue<GoodsReceipt>("GoodsReceipt")
-                .HasValue<GoodsIssue>("GoodsIssue");
+        modelBuilder.Entity<Document>()
+            .HasDiscriminator<string>("DocType")
+            .HasValue<GoodsReceiptIssue>("GoodsReceipt")
+            .HasValue<GoodsIssue>("GoodsIssue")
+            .HasValue<InventoryDocument>("InventoryDocument")
+            .HasValue<StorageReportDocument>("StorageReportDocument");
 
             modelBuilder.Entity<Employee>(entity => {
                 entity.HasKey(e => e.Id);
