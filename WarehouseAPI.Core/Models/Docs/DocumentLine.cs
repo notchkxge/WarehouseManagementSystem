@@ -14,13 +14,11 @@ public abstract class DocumentLine{//removed abstarct to do teh damn migration D
 // Concrete implementations
 public class GoodsReceiptLine : DocumentLine
 {
-    // Additional properties specific to goods receipt lines
     public string BatchNumber { get; set; }
     public DateTime? ExpiryDate { get; set; }
 }
 
 public class GoodsIssueLine : DocumentLine
 {
-    // Additional properties specific to goods issue lines
     public string PickedBy { get; set; }
 }

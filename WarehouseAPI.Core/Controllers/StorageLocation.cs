@@ -8,6 +8,7 @@ namespace WarehouseAPI.Core.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [SimpleAuthorize("Director", "Storekeeper")]
     public class StorageLocationsController : ControllerBase
     {
         private readonly StorageLocationRepository _storageLocationRepository;

@@ -10,6 +10,7 @@ namespace WarehouseAPI.Core.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [SimpleAuthorize("Director")] 
     public class EmployeesController : ControllerBase
     {
         private readonly EmployeeRepository _employeeRepository;

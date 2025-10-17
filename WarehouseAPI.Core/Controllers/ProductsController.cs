@@ -6,6 +6,7 @@ namespace WarehouseAPI.Core.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [SimpleAuthorize("Director", "Storekeeper")]
     public class ProductsController : ControllerBase
     {
         private readonly ProductRepository _productRepository;

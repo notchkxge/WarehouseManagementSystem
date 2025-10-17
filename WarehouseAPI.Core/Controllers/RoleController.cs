@@ -28,7 +28,7 @@ namespace WarehouseAPI.Core.Controllers{
                 return Ok(roles);
             }
             catch (Exception ex){
-                return StatusCode(500, $"Error: {ex.Message}");
+                return StatusCode(500, $"Error: {ex.Message}");//500 ->> Internal Server Error
             }
         }
 
@@ -59,7 +59,8 @@ namespace WarehouseAPI.Core.Controllers{
         // =======================
         // AUTHENTICATION ENDPOINTS
         // =======================
-
+        //this thing is annoying without a GUI
+        
         [HttpPost("login")]
         public async Task<ActionResult<LoginResponseDto>> Login(LoginDto loginDto){
             var employee = await _context.Employees
@@ -101,8 +102,11 @@ namespace WarehouseAPI.Core.Controllers{
             return Ok(new{ message = "RolesController is working!" });
         }
 */
-        private string GenerateJwtToken(Employee employee){
-            return $"mock-token-{employee.Id}-{employee.Role.Name}-{Guid.NewGuid()}";
+        private string GenerateJwtToken(Employee employee)
+        {
+            var tokenData = $"{employee.Id}:{employee.Role.Name}:{DateTime.UtcNow.Ticks}";
+            var tokenBytes = System.Text.Encoding.UTF8.GetBytes(tokenData);
+            return Convert.ToBase64String(tokenBytes);
         }
     }
 }

@@ -35,11 +35,34 @@ using (var scope = app.Services.CreateScope())
     DatabaseSeeder.Seed(context);
 }
 
-using (var scope = app.Services.CreateScope())
+app.Use(async (context, next) =>
 {
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    DatabaseSeeder.Seed(context);
-}
+    var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Replace("Bearer ", "");
+    
+    if (!string.IsNullOrEmpty(token))
+    {
+        try
+        {
+            // Decode the token
+            var tokenBytes = Convert.FromBase64String(token);
+            var tokenData = System.Text.Encoding.UTF8.GetString(tokenBytes);
+            var parts = tokenData.Split(':');
+            
+            if (parts.Length == 3)
+            {
+                // Add user info to context for authorization
+                context.Items["EmployeeId"] = int.Parse(parts[0]);
+                context.Items["Role"] = parts[1];
+            }
+        }
+        catch
+        {
+            // Token is invalid, but i'll continue without user info
+        }
+    }
+    
+    await next();
+});
 
 app.MapControllers();
 
