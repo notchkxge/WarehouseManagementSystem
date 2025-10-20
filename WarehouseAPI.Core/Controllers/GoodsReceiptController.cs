@@ -73,7 +73,8 @@ namespace WarehouseAPI.Core.Controllers{
 
         // PUT: api/goodsreceipt/{id}/assign-locations - Move to "раскладка", assign locations
         [HttpPut("{id}/assign-locations")]
-        public async Task<ActionResult> AssignStorageLocations(int id, AssignLocationsDto dto){
+        public async Task<ActionResult> AssignStorageLocations(int id, AssignLocationsDto dto)
+        {
             var receipt = await _context.GoodsReceipts
                 .Include(r => r.DocumentLines)
                 .ThenInclude(dl => dl.Product)
@@ -85,8 +86,9 @@ namespace WarehouseAPI.Core.Controllers{
             var assignStatus = await _context.DocumentStatuses.FirstOrDefaultAsync(s => s.Name == "раскладка");
             if (assignStatus == null) return BadRequest("Status not found");
 
-            // Validate capacity for each assignment
-            foreach (var assignment in dto.Assignments){
+            // Validate capacity for each assignment AND CREATE THEM
+            foreach (var assignment in dto.Assignments)
+            {
                 var documentLine = receipt.DocumentLines.FirstOrDefault(dl => dl.Id == assignment.DocumentLineId);
                 var storageLocation = await _context.Locations
                     .Include(sl => sl.Warehouse)
@@ -99,6 +101,14 @@ namespace WarehouseAPI.Core.Controllers{
                 // Check capacity
                 if (!await CanAddProductToLocation(storageLocation, documentLine.Product, documentLine.Quantity))
                     return BadRequest($"Not enough capacity in location {storageLocation}");
+
+                // ✅ FIX: CREATE THE ASSIGNMENT IN DATABASE
+                var goodsReceiptAssignment = new GoodsReceiptLineAssignment
+                {
+                    DocumentLineId = assignment.DocumentLineId,
+                    StorageLocationId = assignment.StorageLocationId,
+                };
+                _context.GoodsReceiptLineAssignments.Add(goodsReceiptAssignment);
             }
 
             // Update status to "раскладка"

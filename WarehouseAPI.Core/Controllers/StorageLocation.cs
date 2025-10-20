@@ -1,8 +1,10 @@
 ﻿using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using WarehouseAPI.Core.Data.Repositories;
 using WarehouseAPI.Core.Models.DTOs;
 using WarehouseAPI.Core.Models.Entities;
+using WarehouseAPI.Core.Data;
 
 namespace WarehouseAPI.Core.Controllers
 {
@@ -13,11 +15,13 @@ namespace WarehouseAPI.Core.Controllers
     {
         private readonly StorageLocationRepository _storageLocationRepository;
         private readonly WarehouseRepository _warehouseRepository;
+        private readonly ApplicationDbContext _context;
 
-        public StorageLocationsController(StorageLocationRepository storageLocationRepository, WarehouseRepository warehouseRepository)
+        public StorageLocationsController(StorageLocationRepository storageLocationRepository, WarehouseRepository warehouseRepository, ApplicationDbContext context)
         {
             _storageLocationRepository = storageLocationRepository;
             _warehouseRepository = warehouseRepository;
+            _context = context;
         }
 
         [HttpGet]
@@ -87,28 +91,34 @@ namespace WarehouseAPI.Core.Controllers
         [HttpGet("report/capacity/csv")]
         public async Task<IActionResult> GetStorageCapacityReportCsv()
         {
-            var locations = await _storageLocationRepository.GetAllAsync();
+            // FIX: Include Product and ProductBalances properly
+            var locations = await _context.Locations
+                .Include(l => l.Warehouse)
+                .Include(l => l.ProductBalances)
+                .ThenInclude(pb => pb.Product) 
+                .ToListAsync();
 
-            // Russian headers
             var csv = new StringBuilder();
             csv.AppendLine("Склад,Место хранения,Текущий вес,Максимальная нагрузка,Использование %,Товары,Статус загрузки");
 
             foreach (var location in locations)
             {
-                var fullLocation = $"{location.Building}-{location.Room}-{location.Rack}-{location.Spot}";
-                var utilization = location.CurrentWeight / 300.0 * 100; // 300kg per rack
+                var totalWeight = location.ProductBalances?
+                    .Sum(pb => (pb.Product?.Weight ?? 0) * (double)pb.Quantity) ?? 0;
         
-                // NULL-SAFE: Handle null ProductBalances and null Products
+                var utilization = (totalWeight / 300.0) * 100;
+        
                 var products = location.ProductBalances?
-                    .Where(pb => pb != null) // Filter out null ProductBalance objects
-                    .Select(pb => $"{pb.Product?.Name ?? "Unknown Product"} ({pb.Quantity})") ?? Enumerable.Empty<string>();
+                                   .Where(pb => pb != null && pb.Product != null)
+                                   .Select(pb => $"{pb.Product.Name} ({pb.Quantity})") 
+                               ?? Enumerable.Empty<string>();
         
                 var productsString = string.Join("; ", products);
                 var loadStatus = utilization >= 90 ? "ПЕРЕГРУЗКА" : 
                     utilization >= 70 ? "ВЫСОКАЯ" : 
                     "НОРМА";
 
-                csv.AppendLine($"\"{location.Warehouse?.Name ?? "Unknown Warehouse"}\",\"{fullLocation}\",{location.CurrentWeight},300,{utilization:F1}%,\"{productsString}\",\"{loadStatus}\"");
+                csv.AppendLine($"\"{location.Warehouse?.Name ?? "Unknown Warehouse"}\",\"{location}\",{totalWeight},300,{utilization:F1}%,\"{productsString}\",\"{loadStatus}\"");
             }
 
             // Save to folder
