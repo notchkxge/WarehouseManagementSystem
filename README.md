@@ -24,7 +24,7 @@ This backend API implements a complete warehouse management system with:
 During this internship project, I gained experience in:
 - Complex relationships between classes and entities
 - API request handling and response management
-- Business logic implementation and validation
+- Business logic implementation and validation (**Learned how to join tables**)
 - Building RESTful APIs with proper endpoints and HTTP methods
 - MVC architecture for backend systems
 - Database design and Entity Framework Core
