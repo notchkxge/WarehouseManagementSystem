@@ -64,7 +64,15 @@ During this internship project, I gained experience in:
 ### Personnal Notes:
 - Try to never mix llm code with human code. Because I couldn;t understand a lot, So wasted time on debugging alot !!
 - Had fun doing it !
-  
+
+###Screenshots on how it works
 [MyRootApi.docx](https://github.com/user-attachments/files/23196256/MyRootApi.docx)
 
-  
+###Report Generated with API
+[Отчет_по_приемкам_20251021_005528.xlsx](https://github.com/user-attachments/files/23315033/_._._20251021_005528.xlsx)
+[Отчет_по_остаткам_20251020_221526.xlsx](https://github.com/user-attachments/files/23315035/_._._20251020_221526.xlsx)
+[Статус_запасов_20251021_005448.xlsx](https://github.com/user-attachments/files/23315036/_._20251021_005448.xlsx)
+[Отчет_по_выдаче_20251021_005649.xlsx](https://github.com/user-attachments/files/23315034/_._._20251021_005649.xlsx)
+[Загрузка_склада_20251020_221614.xlsx](https://github.com/user-attachments/files/23315037/_._20251020_221614.xlsx)
+[Инвентаризация_20251021_005733.xlsx](https://github.com/user-attachments/files/23315038/_20251021_005733.xlsx)
+
